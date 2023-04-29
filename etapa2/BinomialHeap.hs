@@ -56,6 +56,8 @@ data BinomialHeap p k = BinomialHeap { size :: Int, trees :: [BinomialTree p k] 
     Node {prio = 0, key = 'a', children = [Node {prio = 1, key = 'b', children = []}]}
 -}
 attach :: Ord p => BinomialTree p k -> BinomialTree p k -> BinomialTree p k
+attach EmptyTree tree = tree
+attach tree EmptyTree = tree
 attach t1@(Node p1 k1 c1) t2@(Node p2 k2 c2)
   | p1 < p2   = Node p1 k1 (t2 : c1)
   | otherwise = Node p2 k2 (t1 : c2)
@@ -243,112 +245,10 @@ zipExtend a' b' (a : as) (b : bs) = (a, b) : zipExtend a' b' as bs
     ]
 -}
 
-degree :: BinomialTree p k -> Int
-degree EmptyTree = -1  -- by convention
-degree (Node _ _ children) = length children
-
--- mergeTrees :: Ord p => [BinomialTree p k] -> [BinomialTree p k] -> [BinomialTree p k]
--- mergeTrees [] tree2 = tree2
--- mergeTrees tree1 [] = tree1
--- mergeTrees tree1@(t1:tree1') tree2@(t2:tree2')
---     | degree t1 < degree t2 = t1 : mergeTrees tree1' tree2
---     | degree t2 < degree t1 = t2 : mergeTrees tree1 tree2'
---     | otherwise = insertTree (attach t1 t2) (mergeTrees tree1' tree2')
-
--- mergeTrees :: Ord p => [BinomialTree p k] -> [BinomialTree p k] -> [BinomialTree p k]
--- mergeTrees [] tree2 = tree2
--- mergeTrees tree1 [] = tree1
--- mergeTrees tree1 tree2
---     | length tree1 /= length tree2 = error "input lists must have the same length"
---     | otherwise = go (zipExtend EmptyTree EmptyTree tree1 tree2)
---     where
---         go [] = []
---         go ((tree1, tree2):ts')
---             | degree tree1 < degree tree2 = tree1 : go ts'
---             | degree tree2 < degree tree1 = tree2 : go ts'
---             | otherwise = insertTree (attach tree1 tree2) (go ts')
-
-
--- mergeTrees :: Ord p => [BinomialTree p k] -> [BinomialTree p k] -> [BinomialTree p k]
--- mergeTrees [] [] = []
--- mergeTrees ts1 ts2 = go (zipExtend EmptyTree EmptyTree ts1 ts2)
---   where
---     go [] = []
---     go [(tree, EmptyTree)] = [tree]
---     go [(EmptyTree, tree)] = [tree]
---     go ((tree1, EmptyTree) : ts') = tree1 : go ts'
---     go ((EmptyTree, tree2) : ts') = tree2 : go ts'
---     go ((tree1@(Node p1 k1 children1), tree2@(Node p2 k2 children2)) : ts') =
---       if p1 < p2
---         then tree1 : go ts'
---         else if p2 < p1
---           then tree2 : go ts'
---           else insertTree (attach tree1 tree2) (go ts')
-
 mergeTrees :: Ord p => [BinomialTree p k] -> [BinomialTree p k] -> [BinomialTree p k]
-mergeTrees [] [] = []
-mergeTrees ts1 ts2 = go (zipExtend EmptyTree EmptyTree ts1 ts2)
+mergeTrees trees1 trees2 = foldr merge [] (zipExtend EmptyTree EmptyTree trees1 trees2)
   where
-    go [] = []
-    go [(tree, EmptyTree)] = [tree]
-    go [(EmptyTree, tree)] = [tree]
-    go ((tree1, EmptyTree) : ts') = tree1 : go ts'
-    go ((EmptyTree, tree2) : ts') = tree2 : go ts'
-    go ((tree1@(Node p1 k1 children1), tree2@(Node p2 k2 children2)) : ts') = case compare p1 p2 of
-      LT -> tree1 : go ts'
-      GT -> tree2 : go ts'
-      EQ -> insertTree (attach tree1 tree2) (go ts')
-
--- mergeTrees :: Ord p => [BinomialTree p k] -> [BinomialTree p k] -> [BinomialTree p k]
--- mergeTrees [] [] = []
--- mergeTrees ts1 ts2 = go (zipExtend EmptyTree EmptyTree ts1 ts2)
---   where
---     go [] = []
---     go [(tree, EmptyTree)] = [tree]
---     go [(EmptyTree, tree)] = [tree]
---     go ((tree1, EmptyTree) : ts') = tree1 : go ts'
---     go ((EmptyTree, tree2) : ts') = tree2 : go ts'
---     go ((tree1@(Node p1 k1 children1), tree2@(Node p2 k2 children2)) : ts')
---       | p1 < p2 = tree1 : go ts'
---       | p2 < p1 = tree2 : go ts'
---       | otherwise = go $ insertTree (attach tree1 tree2) ts'
-
--- mergeTrees :: (Ord p, Ord k) => [(BinomialTree p k, BinomialTree p k)] -> [BinomialTree p k] -> [BinomialTree p k]
--- mergeTrees [] trees = trees
--- mergeTrees ((tree1, tree2) : ts') trees =
---     let
---         (Node p1 k1 children1, Node p2 k2 children2) = (tree1, tree2)
---         attachTree = attach tree1 tree2
---         ts'' = (attachTree, attachTree) : ts'
---     in
---         case compare p1 p2 of
---             LT -> tree1 : mergeTrees ts' trees
---             GT -> tree2 : mergeTrees ts' trees
---             EQ -> mergeTrees (insertTree ts'' []) trees
---     where
---         insertTree ts [] = ts
---         insertTree ((t1, t2) : ts') ((Node p k children) : trees') =
---             if p < fst (priority t1)
---             then (t1, t2) : (Node p k children) : ts' ++ trees'
---             else (Node p k children) : insertTree ts' trees'
---         insertTree ((t1, t2) : ts') [] = t1 : t2 : ts'
-
-
--- mergeTrees :: Ord p => [BinomialTree p k] -> [BinomialTree p k] -> [BinomialTree p k]
--- mergeTrees [] [] = []
--- mergeTrees ts1 ts2 = go (zipExtend EmptyTree EmptyTree ts1 ts2)
---   where
---     go [] = []
---     go [(tree, EmptyTree)] = [tree]
---     go [(EmptyTree, tree)] = [tree]
---     go ((tree1, EmptyTree) : ts') = tree1 : go ts'
---     go ((EmptyTree, tree2) : ts') = tree2 : go ts'
---     go ((tree1@(Node p1 k1 children1), tree2@(Node p2 k2 children2)) : ts')
---       | p1 < p2 = tree1 : go ts'
---       | p2 < p1 = tree2 : go ts'
---       | otherwise = go $ insertTree (attach tree1 tree2) ts'
-
-
+    merge (t1, t2) acc = attach t1 t2 : acc
 
 
 {-
