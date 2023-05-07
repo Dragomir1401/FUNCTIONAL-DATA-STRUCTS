@@ -359,19 +359,29 @@ eraseLast (p:ps) = p : eraseLast ps
     După ce implementați, răspundeți la întrebarea: Care este contribuția
     evaluării leneșe la utilizarea eficientă a funcției isolate?
 -}
-removeMin :: (Ord p, Eq k) => BinomialHeap p k -> BinomialHeap p k
-removeMin emptyHeap = emptyHeap
-removeMin heap@(BinomialHeap size trees) =
-    let (Node _ m c, ts) = findMin heap
-        newTrees = [t | t <- trees, t /= Node _ m c]
-        newOrphans = reverse c ++ ts
-        mergeTrees = case t of
-            [] -> []
-            [t] -> [t]
-            t1 : t2 : rest -> isolate $ merge t1 t2 : mergeTrees rest
-    in BinomialHeap (size - 1) (mergeTrees (newTrees ++ newOrphans))
 
- 
+removeMin :: (Ord p, Eq k) => BinomialHeap p k -> BinomialHeap p k
+removeMin (BinomialHeap 0 _) = emptyHeap
+removeMin (BinomialHeap size trees) =
+    let 
+        (removedTree, restTreeList) = findRemovedTree trees
+        -- merge the list of trees with the list reversed of children of the removed tree
+        newTrees = mergeTrees restTreeList (reverse (children removedTree))
+    in BinomialHeap (size - 1) newTrees
+  where
+    findRemovedTree ts =
+        let 
+            -- filter out the empty trees and create the list of pairs using isolate
+            nonEmptyTrees = filter (not . isEmptyTree) $ isolate EmptyTree ts
+            -- find the pair with the tree with minimum priority and the rest of the trees
+            (minTree, restTree) = minimumBy (compare `on` (prio . fst)) nonEmptyTrees
+        in (minTree, restTree)
+
+
+isEmptyTree :: (Ord p, Eq k) => (BinomialTree p k, [BinomialTree p k]) -> Bool
+isEmptyTree (EmptyTree, _) = True
+isEmptyTree _ = False
+
 
 -- Evaluarea leneșă poate amâna calculul unei expresii până când acesta este 
 -- cu adevărat necesar. În cazul funcției isolate, acest lucru poate fi util 
@@ -551,4 +561,5 @@ instance Functor (BinomialHeap p) where
 -}
 instance Foldable (BinomialTree p) where
     -- foldr :: (k -> b -> b) -> b -> BinomialTree p k -> b
-    foldr f acc tree = undefined
+    foldr f acc EmptyTree = acc
+    foldr f acc (Node p k children) = f k (foldr (\x acc -> foldr f acc x) acc children)
